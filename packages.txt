@@ -4,3 +4,5 @@ libtiff-dev
 libfreetype6-dev
 libwebp-dev
 zlib1g-dev
+libgl1
+libglib2.0-0
