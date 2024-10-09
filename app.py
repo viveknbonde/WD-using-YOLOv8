@@ -9,8 +9,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import requests
 import time
-import pygame
 from datetime import datetime
+import base64
 
 # Set page config
 st.set_page_config(page_title="Weapon Detection System", layout="wide")
@@ -27,20 +27,11 @@ PUSHBULLET_API_KEY = "o.96QOQw5doBIdfmAOpuiDYsQsaDl8Ar4o"  # Get this from pushb
 ALERT_COOLDOWN = 300  # 5 minutes
 last_alert_time = 0
 
-# Initialize pygame for sound
-pygame.mixer.init()
-
 # Initialize session state for notifications and webcam
 if 'notifications' not in st.session_state:
     st.session_state.notifications = []
 if 'webcam_active' not in st.session_state:
     st.session_state.webcam_active = False
-
-# Load the alert sound
-@st.cache_resource
-def load_alert_sound():
-    sound = pygame.mixer.Sound("alert.mp3")  # Make sure to have an "alert.mp3" file in your project directory
-    return sound
 
 # Initialize the YOLOv8 model
 @st.cache_resource
@@ -85,9 +76,27 @@ def send_pushbullet_alert(weapon_type):
     except Exception as e:
         st.sidebar.error(f"Failed to send Pushbullet alert: {str(e)}")
 
+def get_base64_of_bin_file(bin_file):
+    with open(bin_file, 'rb') as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+def inject_sound_js():
+    alert_sound = get_base64_of_bin_file('alert.mp3')
+    st.markdown(
+        f"""
+        <script>
+        var audio = new Audio("data:audio/mp3;base64,{alert_sound}");
+        function playSound() {{
+            audio.play();
+        }}
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
+
 def play_sound_alert():
-    alert_sound = load_alert_sound()
-    alert_sound.play()
+    st.write('<script>playSound();</script>', unsafe_allow_html=True)
 
 def add_notification(weapon_type):
     timestamp = datetime.now().strftime("%I:%M:%S %p")  # 12-hour time format
@@ -238,6 +247,8 @@ def main():
     }
     </style>
     """, unsafe_allow_html=True)
+
+    inject_sound_js()
 
     st.title("Weapon Detection System")
     st.markdown("Real-time surveillance and alert system")
